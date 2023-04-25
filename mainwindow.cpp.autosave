@@ -1,0 +1,1461 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include"employe.h"
+#include "profil.h"
+#include "formulaire.h"
+#include "statistique.h"
+
+#include "qcustomplot.h"
+#include <iostream>
+#include <QComboBox>
+#include <QtGui>
+#include <QCompleter>
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+     this->setWindowTitle("");
+    ui->tableView->setModel(Etmp.afficher());
+
+   ui->lineEdit_ID->setValidator( new QIntValidator(0, 99999999, this));// INT
+   ui->text_id->setValidator( new QIntValidator(0, 99999999, this));// INT ON EDIT
+
+    ui->lineEdit_AGE->setValidator( new QIntValidator(0, 99999999, this));// INT
+    ui->text_age->setValidator( new QIntValidator(0, 99999999, this));// INT ON EDIT
+
+
+    QRegExp nomRegex("^[a-zA-ZéèêëîïôöùûüçÀÁÂÃÄÅÆÈÉÊËÎÏÔÖÙÛÜÇ]+$");//NOM
+    QValidator *nomValidator = new QRegExpValidator(nomRegex, this);
+
+    ui->lineEdit_NOM->setValidator(nomValidator);
+    ui->text_nom->setValidator(nomValidator);
+
+    ui->lineEdit_PRENOM->setValidator(nomValidator);
+    ui->text_prenom->setValidator(nomValidator);
+
+
+
+
+     ui->comboBox->addItem("");
+     ui->comboBox->addItem("Agent de Service");
+     ui->comboBox->addItem("Agent de securite");
+     ui->comboBox->addItem("Agent d'entretien");
+     ui->comboBox->addItem("Admin");
+
+      //VISUALISER
+      ui->comboBox_R->addItem("");
+      ui->comboBox_R->addItem("Agent de Service");
+      ui->comboBox_R->addItem("Agent de securite");
+      ui->comboBox_R->addItem("Agent d'entretien");
+      ui->comboBox_R->addItem("Admin");
+    //autocomplete
+      QCompleter *completer = new QCompleter(this);
+      QStringListModel *completerModel = new QStringListModel(this);
+      completer->setModel(completerModel);
+      completerModel->setStringList(Etmp.getListeCles()); // Utiliser la méthode getListeCles
+      ui->lineEdit_chercherE->setCompleter(completer);
+
+
+      ui->pushButton_home->setStyleSheet("background-color:  rgb(8, 103, 94);color: #fff;border-top-left-radius: 20px;");
+
+
+       update(); // Update the screen to see the changes
+      int nombreEmployes = Etmp.getNombreEmployes();
+      QString qstrNombreEmployes = QString::number(nombreEmployes);
+      ui->label_nbE->setText(qstrNombreEmployes);
+      //ui->pushButton_employe->setEnabled(0);
+
+
+       MainWindow::makePlot();
+       MainWindow::makePlot_second();
+       MainWindow::makeTableView();
+       MainWindow::chartPie();
+       //OFFRE
+
+         ui->le_code->setValidator( new QIntValidator(0, 99999999, this));///accepte seulement les entiers
+         ui->le_prix->setValidator( new QIntValidator(0, 99999999, this));
+         ui->le_cin->setValidator( new QIntValidator(0, 99999999, this));
+         ui->tab_offre->setModel(o.afficher());
+         //
+         QString style = "QGroupBox {border: 1px solid #B2DFDB; border-top: 2px solid #26A69A; margin-top: 0.5em;}"
+                         "QGroupBox::title {subcontrol-origin: margin; subcontrol-position: top center; padding: 0 3px;}";
+         ui->groupBox->setStyleSheet(style);
+         ui->groupBox_7->setStyleSheet(style);
+         ui->groupBox_8->setStyleSheet(style);
+         ui->groupBox_9->setStyleSheet(style);
+         ui->groupBox_6->setStyleSheet(style);
+         ui->groupBox_5->setStyleSheet(style);
+         ui->groupBox_4->setStyleSheet(style);
+         ui->groupBox_3->setStyleSheet(style);
+         ui->groupBox_2->setStyleSheet(style);
+         //
+         QString tabWidgetStyle = "QTabWidget::pane {"
+                                  "border-bottom: 1px solid #1abc9c;"
+                                  "}"
+                                  "QTabBar::tab:selected, QTabBar::tab:hover {"
+                                  "background-color: rgb(1, 141, 127);"
+                                  "border-bottom: 5px solid red;"
+                                  "}"
+                                  "QTabBar::tab:selected {"
+                                  "color: white;"
+                                  "}";
+
+         // Appliquer le style au QTabWidget  tabWidget_2 tabWidget_station
+         ui->tabWidget_service->setStyleSheet(tabWidgetStyle);
+         ui->tabWidget_employe->setStyleSheet(tabWidgetStyle);
+         ui->tabWidget_station->setStyleSheet(tabWidgetStyle);
+
+           //ui->tabWidget_employe->setStyleSheet(tabWidgetStyle);
+            //ui->tabWidget_employe->setStyleSheet(tabWidgetStyle);
+
+
+         // STYLE
+
+
+ }
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+/*
+void MainWindow::makePlot()
+{
+
+
+    // set dark background gradient:
+    QLinearGradient gradient(0, 0, 0, 400);
+    gradient.setColorAt(0, QColor(90, 90, 90));
+    gradient.setColorAt(0.38, QColor(105, 105, 105));
+    gradient.setColorAt(1, QColor(70, 70, 70));
+    ui->customPlot->setBackground(QBrush(gradient));
+
+    // create empty bar chart objects:
+    QCPBars *regen = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    QCPBars *nuclear = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    QCPBars *fossil = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    regen->setAntialiased(false); // gives more crisp, pixel aligned bar borders
+    nuclear->setAntialiased(false);
+    fossil->setAntialiased(false);
+    regen->setWidth(0.8);
+    nuclear->setWidth(0.8);
+    fossil->setWidth(0.8);
+    // set names and colors:
+    fossil->setName("Fossil fuels");
+    fossil->setPen(QPen(QColor(111, 9, 176).lighter(170)));
+    fossil->setBrush(QColor(111, 9, 176));
+    nuclear->setName("Nuclear");
+    nuclear->setPen(QPen(QColor(250, 170, 20).lighter(150)));
+    nuclear->setBrush(QColor(250, 170, 20));
+    regen->setName("Regenerative");
+    regen->setPen(QPen(QColor(0, 168, 140).lighter(130)));
+    regen->setBrush(QColor(0, 168, 140));
+    // stack bars on top of each other:
+    nuclear->moveAbove(fossil);
+    regen->moveAbove(nuclear);
+
+    // prepare x axis with country labels:
+    QSqlQuery query("SELECT role,COUNT(*) as occurrences FROM employes GROUP BY role");
+
+    QVector<QString> labels;
+    int count = 0; // initialisation du compteur à zéro
+
+    while (query.next()) {
+        count++; // incrémenter le compteur
+        labels.append(query.value(0).toString()); // ajouter le nom de l'employé aux labels
+    }
+
+    // préparer les ticks
+    QVector<double> ticks(count);
+    for(int i=0; i<count; i++) {
+        ticks[i] = i+1; // affecter un numéro de tick à chaque employé
+    }
+
+
+    ui->customPlot->xAxis->setRange(0, count + 1);
+
+
+    ui->customPlot->xAxis->setTickLabelRotation(60);
+
+    ui->customPlot->xAxis->setTickLength(0, 4);
+    ui->customPlot->xAxis->setRange(0, 8);
+    ui->customPlot->xAxis->setBasePen(QPen(Qt::white));
+    ui->customPlot->xAxis->setTickPen(QPen(Qt::white));
+    ui->customPlot->xAxis->grid()->setVisible(true);
+    ui->customPlot->xAxis->grid()->setPen(QPen(QColor(130, 130, 130), 0, Qt::DotLine));
+    ui->customPlot->xAxis->setTickLabelColor(Qt::white);
+    ui->customPlot->xAxis->setLabelColor(Qt::white);
+
+    // prepare y axis:
+    ui->customPlot->yAxis->setRange(0, 12.1);
+    ui->customPlot->yAxis->setPadding(5); // a bit more space to the left border
+    ui->customPlot->yAxis->setLabel("Power Park\nl'âge par employé (2023)");
+    ui->customPlot->yAxis->setBasePen(QPen(Qt::white));
+    ui->customPlot->yAxis->setTickPen(QPen(Qt::white));
+    ui->customPlot->yAxis->setSubTickPen(QPen(Qt::white));
+    ui->customPlot->yAxis->grid()->setSubGridVisible(true);
+    ui->customPlot->yAxis->setTickLabelColor(Qt::white);
+    ui->customPlot->yAxis->setLabelColor(Qt::white);
+    ui->customPlot->yAxis->grid()->setPen(QPen(QColor(130, 130, 130), 0, Qt::SolidLine));
+    ui->customPlot->yAxis->grid()->setSubGridPen(QPen(QColor(130, 130, 130), 0, Qt::DotLine));
+
+    // Add data:
+    QVector<double> fossilData, nuclearData, regenData;
+    fossilData  << 0.86*10.5 << 0.83*5.5 << 0.84*5.5 << 0.52*5.8 << 0.89*5.2 << 0.90*4.2 << 0.67*11.2;
+    nuclearData << 0.08*10.5 << 0.12*5.5 << 0.12*5.5 << 0.40*5.8 << 0.09*5.2 << 0.00*4.2 << 0.07*11.2;
+    regenData   << 0.06*10.5 << 0.05*5.5 << 0.04*5.5 << 0.06*5.8 << 0.02*5.2 << 0.07*4.2 << 0.25*11.2;
+    fossil->setData(ticks, fossilData);
+    nuclear->setData(ticks, nuclearData);
+    regen->setData(ticks, regenData);
+
+    // setup legend:
+    ui->customPlot->legend->setVisible(true);
+    ui->customPlot->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop|Qt::AlignHCenter);
+    ui->customPlot->legend->setBrush(QColor(255, 255, 255, 100));
+    ui->customPlot->legend->setBorderPen(Qt::NoPen);
+    QFont legendFont = font();
+    legendFont.setPointSize(10);
+    ui->customPlot->legend->setFont(legendFont);
+    ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+
+}*/
+
+void MainWindow::makePlot_second()
+{
+
+
+       //
+       // create empty bar chart objects:
+        QCPBars *regen = new QCPBars(ui->customPlot_second->xAxis, ui->customPlot_second->yAxis);
+        QCPBars *nuclear = new QCPBars(ui->customPlot_second->xAxis, ui->customPlot_second->yAxis);
+        QCPBars *fossil = new QCPBars(ui->customPlot_second->xAxis, ui->customPlot_second->yAxis);
+        regen->setAntialiased(false); // gives more crisp, pixel aligned bar borders
+        nuclear->setAntialiased(false);
+        fossil->setAntialiased(false);
+        regen->setWidth(0.8);
+        nuclear->setWidth(0.8);
+        fossil->setWidth(0.8);
+        // set names and colors:
+        fossil->setName("Fossil fuels");
+        fossil->setPen(QPen(QColor(111, 9, 176).lighter(170)));
+        fossil->setBrush(QColor(111, 9, 176));
+        nuclear->setName("Nuclear");
+        nuclear->setPen(QPen(QColor(250, 170, 20).lighter(150)));
+        nuclear->setBrush(QColor(250, 170, 20));
+        regen->setName("Regenerative");
+        regen->setPen(QPen(QColor(0, 168, 140).lighter(130)));
+        regen->setBrush(QColor(0, 168, 140));
+        // stack bars on top of each other:
+        nuclear->moveAbove(fossil);
+        regen->moveAbove(nuclear);
+
+       // create empty bar chart objects:
+       QCPBars *employe = new QCPBars(ui->customPlot_second->xAxis, ui->customPlot_second->yAxis);
+       ui->customPlot_second->addPlottable(employe);
+       // set names and colors:
+       QPen pen;
+       pen.setWidthF(0.5);
+       employe->setName("Nombre d'employés/Rôle");
+       pen.setColor(QColor(255, 131, 0));
+       employe->setPen(pen);
+       employe->setBrush(QColor(255, 131, 0, 50));
+
+       // prepare x axis with country labels:
+       QVector<double> ticks;
+       QVector<QString> labels = Etmp.getListNom();
+          for (int i=0;i<labels.size();i++){
+              ticks<< (i+0.5);
+          }
+
+       ui->customPlot_second->xAxis->setAutoTicks(false);
+       ui->customPlot_second->xAxis->setAutoTickLabels(false);
+       ui->customPlot_second->xAxis->setTickVector(ticks);
+       ui->customPlot_second->xAxis->setTickVectorLabels(labels);
+       ui->customPlot_second->xAxis->setTickLabelRotation(60);
+       ui->customPlot_second->xAxis->setSubTickCount(0);
+       ui->customPlot_second->xAxis->setTickLength(0, 4);
+       ui->customPlot_second->xAxis->grid()->setVisible(true);
+       ui->customPlot_second->xAxis->setRange(0, ticks.size());
+
+       // prepare y axis:
+       ui->customPlot_second->yAxis->setRange(0, 50.1);
+       ui->customPlot_second->yAxis->setPadding(5); // a bit more space to the left border
+       ui->customPlot_second->yAxis->setLabel("Nombre des employés");
+       ui->customPlot_second->yAxis->grid()->setSubGridVisible(true);
+       QPen gridPen;
+       gridPen.setColor(QColor(0, 0, 0, 25));
+       ui->customPlot_second->yAxis->grid()->setPen(gridPen);
+       gridPen.setStyle(Qt::DotLine);
+       ui->customPlot_second->yAxis->grid()->setSubGridPen(gridPen);
+
+       // Add data:
+       QSqlQuery q("SELECT age  FROM employes");
+
+
+       QVector<double> employeData,employeData1;
+       int count = 0; // initialise le compteur à 0
+       while (q.next()) {
+           count++; // incrémenter le compteur
+           employeData.append(q.value(0).toDouble()); // ajouter la donnée de l'employé aux données
+            //employeData1.append(q.value(1).toDouble());
+       }
+
+       //QVector<double> ticks;
+
+
+      // QCPBars *employe = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+       employe->setData(ticks, employeData);
+      // employe->setData(ticks, employeData1);
+
+       // setup legend:
+       ui->customPlot_second->legend->setVisible(true);
+       ui->customPlot_second->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop|Qt::AlignHCenter);
+       ui->customPlot_second->legend->setBrush(QColor(255, 255, 255, 200));
+
+       QPen legendPen;
+       legendPen.setColor(QColor(130, 130, 130, 200));
+       ui->customPlot_second->legend->setBorderPen(legendPen);
+
+       QFont legendFont = font();
+       legendFont.setPointSize(10);
+       ui->customPlot_second->legend->setFont(legendFont);
+       ui->customPlot_second->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+}
+void MainWindow::chartPie(){
+    // Récupération des données
+    int nbA = 0;
+    int nbB = 0;
+    int nbC = 0;
+
+    QSqlQuery A("SELECT * FROM services ");
+    while (A.next()) {
+        nbA++;
+    }
+
+    QSqlQuery B("SELECT * FROM employes ");
+    while (B.next()) {
+        nbB++;
+    }
+
+    QSqlQuery C("SELECT * FROM services where type like 'equipement'");
+    while (C.next()) {
+        nbC++;
+    }
+
+    // Configuration du graphique
+    ui->customPlot_ChartPie->addGraph();
+    ui->customPlot_ChartPie->graph(0)->setPen(QPen(Qt::black));
+    ui->customPlot_ChartPie->graph(0)->setBrush(QBrush(QColor(255, 0, 0, 50)));
+    ui->customPlot_ChartPie->graph(0)->setData(QVector<double>() << nbA << nbB << nbC, QVector<double>() << 0 << 1 << 2);
+    ui->customPlot_ChartPie->graph(0)->setLineStyle(QCPGraph::lsLine);
+    ui->customPlot_ChartPie->graph(0)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, 5));
+    ui->customPlot_ChartPie->graph(0)->setName("Répartition des services");
+
+    // Configuration de l'axe des x
+
+    ui->customPlot_ChartPie->xAxis->setTickLength(0, 4);
+    ui->customPlot_ChartPie->xAxis->setRange(-0.5, 2.5);
+
+    // Configuration de l'axe des y
+    ui->customPlot_ChartPie->yAxis->setRange(0, qMax(nbA, qMax(nbB, nbC))+1);
+
+    // Configuration de la légende
+    ui->customPlot_ChartPie->legend->setVisible(true);
+    ui->customPlot_ChartPie->legend->setFont(QFont("Arial", 9));
+    ui->customPlot_ChartPie->legend->setRowSpacing(-3);
+
+    // Rafraîchissement du graphique
+    ui->customPlot_ChartPie->replot();
+
+
+}
+void MainWindow::makePlot()
+{
+
+
+    // change all text color to white
+    QPalette plotPalette = ui->customPlot->palette();
+    plotPalette.setColor(QPalette::WindowText, Qt::white);
+    plotPalette.setColor(QPalette::Text, Qt::white);
+    ui->customPlot->setPalette(plotPalette);
+
+
+    // create empty bar chart objects:
+    QCPBars *admin = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    QCPBars *agent_de_securite = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    QCPBars *agent_de_service = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+    QCPBars *agent_entretien = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+      QCPBars *retraite = new QCPBars(ui->customPlot->xAxis, ui->customPlot->yAxis);
+
+    // add the bars to the plot and set their names and colors:
+    ui->customPlot->addPlottable(admin);
+    ui->customPlot->addPlottable(agent_de_securite);
+    ui->customPlot->addPlottable(agent_de_service);
+    ui->customPlot->addPlottable(agent_entretien);
+    ui->customPlot->addPlottable(retraite);
+
+
+    QPen pen;
+    pen.setWidthF(1.2);
+
+    admin->setName("Admin");
+    pen.setColor(QColor(150, 222, 0));
+    admin->setPen(pen);
+    admin->setBrush(QColor(150, 222, 0, 70));
+
+    agent_de_securite->setName("Agent de sécurité");
+    pen.setColor(QColor(1, 92, 191));
+    agent_de_securite->setPen(pen);
+    agent_de_securite->setBrush(QColor(1, 92, 191, 50));
+
+    agent_de_service->setName("Agent de services");
+    pen.setColor(QColor(255, 131, 0));
+    agent_de_service->setPen(pen);
+    agent_de_service->setBrush(QColor(255, 131, 0, 50));
+
+    agent_entretien->setName("Agent d'entretien");
+    pen.setColor(QColor(255, 0, 0));
+    agent_entretien->setPen(pen);
+    agent_entretien->setBrush(QColor(255, 0, 0, 50));
+
+    retraite->setName("Retraite");
+    pen.setColor(QColor(255, 0, 0));
+    retraite->setPen(pen);
+    retraite->setBrush(QColor(250, 0, 250, 50));
+
+    // stack bars on top of each other:
+    agent_de_service->moveAbove(retraite);
+    agent_de_securite->moveAbove(retraite);
+    admin->moveAbove(retraite);
+    //retraite->moveAbove(admin);
+
+
+    // prepare x axis with country labels:
+    QVector<double> ticks;
+    QVector<QString> labels = Etmp.getListNom();
+
+    for (int i = 0; i < labels.size(); i++){
+        ticks << (i + 1);
+    }
+
+    ui->customPlot->xAxis->setAutoTicks(false);
+    ui->customPlot->xAxis->setAutoTickLabels(false);
+    ui->customPlot->xAxis->setTickVector(ticks);
+    ui->customPlot->xAxis->setTickVectorLabels(labels);
+    ui->customPlot->xAxis->setTickLabelRotation(60);
+    ui->customPlot->xAxis->setSubTickCount(0);
+    ui->customPlot->xAxis->setTickLength(0, 4);
+    ui->customPlot->xAxis->grid()->setVisible(true);
+    ui->customPlot->xAxis->setRange(0, labels.size() + 1);
+
+    // prepare y axis:
+
+
+
+// prepare y axis:
+ui->customPlot->yAxis->setRange(0, 25.1);
+ui->customPlot->yAxis->setPadding(5); // a bit more space to the left border
+ui->customPlot->yAxis->setLabel("Rôle/ Employé (2023)");
+ui->customPlot->yAxis->grid()->setSubGridVisible(true);
+QPen gridPen;
+gridPen.setStyle(Qt::SolidLine);
+gridPen.setColor(QColor(0, 0, 0, 25));
+ui->customPlot->yAxis->grid()->setPen(gridPen);
+gridPen.setStyle(Qt::DotLine);
+ui->customPlot->yAxis->grid()->setSubGridPen(gridPen);
+
+// Add data:
+QVector<double> Admin_Data, Securite_Data, Service_Data,Entretien_Data,Retraite_Data;
+
+//Implémenter une boucle !
+for (int i=0;i<labels.size();i++){
+
+
+    Admin_Data << Etmp.getNombreEmployeParRole(labels[i],"Admin");
+    Securite_Data << Etmp.getNombreEmployeParRole(labels[i],"Agent de securite");
+    Service_Data <<Etmp.getNombreEmployeParRole(labels[i],"Agent de Service");
+    Entretien_Data <<Etmp.getNombreEmployeParRole(labels[i],"Agent d'entretien");
+    Retraite_Data <<Etmp.getNombreEmployeRetraite(labels[i],50,60);
+}
+
+
+
+
+admin->setData(ticks, Admin_Data);
+agent_de_securite->setData(ticks, Securite_Data);
+agent_de_service->setData(ticks, Service_Data);
+agent_entretien->setData(ticks, Entretien_Data);
+retraite->setData(ticks, Retraite_Data);
+
+
+
+
+// setup legend:
+ui->customPlot->legend->setVisible(true);
+ui->customPlot->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop|Qt::AlignHCenter);
+ui->customPlot->legend->setBrush(QColor(255, 255, 255, 200));
+QPen legendPen;
+legendPen.setColor(QColor(130, 130, 130, 200));
+ui->customPlot->legend->setBorderPen(legendPen);
+QFont legendFont = font();
+legendFont.setPointSize(10);
+ui->customPlot->legend->setFont(legendFont);
+ui->customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+
+}
+void MainWindow::makeTableView()
+{
+    QStandardItemModel *model = new QStandardItemModel(2,3,this); // 2 Rows and 3 Columns
+
+    model->setHorizontalHeaderItem(0,new QStandardItem(QString("Nombre Employés")));
+    model->setHorizontalHeaderItem(1,new QStandardItem(QString("Admin")));
+    model->setHorizontalHeaderItem(2,new QStandardItem(QString("Agent de Services")));
+    model->setHorizontalHeaderItem(3,new QStandardItem(QString("Agent d'entretien")));
+     model->setHorizontalHeaderItem(4,new QStandardItem(QString("Agent de Sécurité")));
+
+
+
+
+    model->setVerticalHeaderItem(0,new QStandardItem(QString("")));
+    model->setVerticalHeaderItem(1,new QStandardItem(QString("Total")));
+
+    for (int i=1;i<2;i++){
+    int j=0;
+    QStandardItem *Row = new QStandardItem(QString::number(Etmp.getNombreEmployes()));
+    model->setItem(i,j,Row);
+    j++;
+    double pourcentage=Etmp.getNombreEmploye("Admin")*100/Etmp.getNombreEmployes();
+    Row = new QStandardItem(QString::number(pourcentage)+'%');
+    model->setItem(i,j,Row);
+    j++;
+    pourcentage=Etmp.getNombreEmploye("Agent de Service")*100/Etmp.getNombreEmployes();
+    Row = new QStandardItem(QString::number(pourcentage)+'%');
+    model->setItem(i,j,Row);
+
+    j++;
+    pourcentage=Etmp.getNombreEmploye("Agent d'entretien")*100/Etmp.getNombreEmployes();
+    Row = new QStandardItem(QString::number(pourcentage)+'%');
+    model->setItem(i,j,Row);
+
+    j++;
+    pourcentage=Etmp.getNombreEmploye("Agent de securite")*100/Etmp.getNombreEmployes();
+    Row = new QStandardItem(QString::number(pourcentage)+'%');
+    model->setItem(i,j,Row);
+
+
+    }
+
+
+    ui->tableView_stat->setModel(model);
+    ui->tableView_stat->setVisible(false);
+    ui->tableView_stat->resizeColumnsToContents();
+    ui->tableView_stat->resizeRowsToContents();
+    ui->tableView_stat->setVisible(true);
+    ui->tableView_stat->horizontalHeader()->setStretchLastSection(true);
+    ui->tableView_stat->verticalHeader()->setStretchLastSection(true);
+
+}
+
+void MainWindow::on_pushButton_AJOUTER_clicked()
+{
+  //QString password = "monmotdepasse";
+  //QByteArray hashedPassword = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);
+  //Collect
+   int cin = ui->lineEdit_ID->text().toInt();
+   QString nom = ui->lineEdit_NOM->text();
+   QString prenom = ui->lineEdit_PRENOM->text();
+   QString mail = ui->lineEdit_MAIL->text();
+   int age = ui->lineEdit_AGE->text().toInt();
+   QString role = ui->comboBox->currentText();
+   QString mdp = ui->lineEdit_MDP->text();
+   QString mdpc = ui->lineEdit_MDP_C->text();
+
+
+
+    // Vérification que tous les champs sont remplis
+    if (cin == 0 || nom.isEmpty() || prenom.isEmpty() || mail.isEmpty() || age == 0 || mdp.isEmpty() || mdpc.isEmpty()) {
+        /*QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+            QObject::tr("Tous les champs sont obligatoires.\n"
+                        "Veuillez remplir tous les champs."), QMessageBox::Cancel);*/
+        ui->lineEdit_MESSAGE->setText("Tous les champs sont obligatoires.\n"
+                                      "Veuillez remplir tous les champs.");
+        return;
+    }
+    QString input = ui->lineEdit_ID->text();
+        QRegularExpression regex("^[0-9]{2,}$");
+        QRegularExpressionMatch match = regex.match(input);
+        if (!match.hasMatch()) {
+            QMessageBox::warning(this, "Erreur de saisie", "L'ID doit être composé d'au moins deux chiffres.");
+            ui->lineEdit_ID->clear();
+        }
+
+
+    // Vérification que le nom contient plus de 3 caractères et ne contient pas de chiffres
+    if (nom.length() < 3 || nom.contains(QRegExp("[0-9]"))) {
+       ui->lineEdit_MESSAGE->setText("Veuillez saisir un nom valide !");
+        /*QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+            QObject::tr("Veuillez saisir un nom valide !"), QMessageBox::Cancel);*/
+        return;
+    }
+    // Vérification de la validité du mail
+     QRegularExpression Mailregex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+
+    if (!Mailregex.match(mail).hasMatch()) {
+        ui->lineEdit_MESSAGE->setText("Veuillez saisir une adresse mail valide !");
+        /*QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+            QObject::tr("Veuillez saisir une adresse mail valide !"), QMessageBox::Cancel);*/
+        return;
+    }
+    // Vérification que l'âge est supérieur ou égal à 18 ans
+    if (age < 18) {
+         ui->lineEdit_MESSAGE->setText("L'âge doit être supérieur ou égal à 18 ans.");
+        /*QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+            QObject::tr("L'âge doit être supérieur ou égal à 18 ans."), QMessageBox::Cancel);*/
+        return;
+    }
+
+    // Vérification que les deux mots de passe sont identiques
+    if (mdp != mdpc) {
+        ui->lineEdit_MESSAGE->setText("Les mots de passe ne sont pas identiques.");
+        /*QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+            QObject::tr("Les mots de passe ne sont pas identiques."), QMessageBox::Cancel);*/
+        return;
+    }
+
+    // Vérification que le mot de passe contient au moins 8 caractères, une lettre minuscule, une lettre majuscule, un chiffre et un caractère spécial
+    QRegularExpression passwordRegex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
+    if (!passwordRegex.match(mdp).hasMatch()) {
+        //ui->lineEdit_MESSAGE->setText("Le mot de passe doit contenir au moins 8 caractères, \n" "une lettre minuscule, une lettre majuscule, \n"   " un chiffre et un caractère spécial.");
+        //return;
+          ui->lineEdit_MESSAGE->setText("");
+        QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+          QObject::tr("Le mot de passe doit contenir au moins 8 caractères, une lettre minuscule, une lettre majuscule, un chiffre et un caractère spécial."), QMessageBox::Ok);
+    return;
+    }
+
+    // Tous les contrôles de saisie sont passés, on peut ajouter l'employé
+    QByteArray mdpHex = QByteArray::fromHex(mdp.toUtf8());
+
+    Employe E(cin, nom, prenom, mail, age, role, mdp);
+    bool test = E.ajouter();
+    if (test) {
+        ui->tableView->setModel(Etmp.afficher());
+         ui->lineEdit_MESSAGE->setText("");
+         on_pushButton_annuler_clicked();
+        QMessageBox::information(nullptr, QObject::tr("Succès"),
+            QObject::tr("L'employé a été ajouté avec succès."), QMessageBox::Ok);
+    } else {
+        QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+          QObject::tr("L'employé n'a pas été ajouté !"), QMessageBox::Ok);
+    }
+}
+
+
+void MainWindow::on_pushButton_login_clicked()
+{
+    ui->stackedWidget->setCurrentIndex(1);
+}
+void MainWindow::on_pushButton_signup_clicked()
+{
+    ui->stackedWidget->setCurrentIndex(0);
+}
+void MainWindow::on_pushButton_load_clicked()
+{
+    ui->tableView->setModel(Etmp.afficher());
+    ui->text_id->setText("");
+    ui->text_nom->setText("");
+    ui->text_prenom->setText("");
+    ui->text_mail->setText("");
+    ui->text_age->setText("");
+    ui->comboBox_R->setCurrentText("");
+    ui->text_mdp->setText("");
+      ui->lineEdit_chercherE->setText("");
+}
+void MainWindow::on_tableView_activated(const QModelIndex &index)
+{
+    QString val=ui->tableView->model()->data(index).toString();
+    //int v = ui->tableView->model()->data(index).toInt();
+     //ui->comboBox_R->setCurrentText("");
+    QSqlQuery query;
+
+
+    query.prepare( "select * from employes where CINE ='"+val+"'");
+
+    if(query.exec())
+    {
+
+        while(query.next())
+        {
+              ui->text_id->setText(query.value(0).toString());
+              ui->text_nom->setText(query.value(1).toString());
+              ui->text_prenom->setText(query.value(2).toString());
+              ui->text_mail->setText(query.value(3).toString());
+              ui->text_age->setText(query.value(4).toString());
+              ui->comboBox_R->setCurrentText(query.value(5).toString());
+              ui->text_mdp->setText(query.value(6).toString());
+
+        }
+         QString val=ui->tableView->model()->data(index).toString();
+    }
+
+
+
+}
+
+void MainWindow::on_pushButton_supprimer_clicked()
+{
+    // Vérifier si les champs de suppression sont vides
+    if(ui->text_id->text().isEmpty() || ui->text_nom->text().isEmpty() || ui->text_prenom->text().isEmpty() || ui->text_mail->text().isEmpty() || ui->text_age->text().isEmpty() || ui->comboBox_R->currentText().isEmpty() || ui->text_mdp->text().isEmpty()) {
+        QMessageBox::warning(this, "Champs vides", "Veuillez remplir tous les champs de suppression.");
+        return;
+    }
+
+    int id = ui->text_id->text().toInt();
+
+    QMessageBox::StandardButton confirmation = QMessageBox::question(this, "Confirmation de suppression", "Voulez-vous vraiment supprimer cet élément ?");
+
+    if (confirmation == QMessageBox::Yes) {
+        bool test = Etmp.supprimer(id);
+        if(test)
+        {
+            ui->tableView->setModel(Etmp.afficher());
+            ui->text_id->setText("");
+            ui->text_nom->setText("");
+            ui->text_prenom->setText("");
+            ui->text_mail->setText("");
+            ui->text_age->setText("");
+            ui->comboBox_R->setCurrentText("");
+            ui->text_mdp->setText("");
+              ui->lineEdit_chercherE->setText("");
+            QMessageBox::information(nullptr, QObject::tr("succès !"),
+                        QObject::tr("supprimé avec succès.\n"
+                                    "Click Ok to exit."), QMessageBox::Ok);
+
+        }
+        else
+            QMessageBox::critical(nullptr, QObject::tr("echec !"),
+                        QObject::tr("la suppression a échoué.\n"
+                                    "Click Cancel to exit."), QMessageBox::Cancel);
+    }
+}
+
+void MainWindow::on_pushButton_modifier_clicked()
+{
+    int cin = ui->text_id->text().toInt();
+    QString nom = ui->text_nom->text();
+    QString prenom = ui->text_prenom->text();
+    QString mail = ui->text_mail->text();
+    int age = ui->text_age->text().toInt();
+    QString role = ui->comboBox_R->currentText();
+    QString mdp = ui->text_mdp->text();
+
+     // Vérification que tous les champs sont remplis
+     if (cin == 0 || nom.isEmpty() || prenom.isEmpty() || mail.isEmpty() || age == 0 || mdp.isEmpty()) {
+         QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+             QObject::tr("Tous les champs sont obligatoires.\n"
+                         "Veuillez remplir tous les champs."), QMessageBox::Cancel);
+         return;
+     }
+     // Vérification que le nom contient plus de 3 caractères et ne contient pas de chiffres
+     if (nom.length() < 3 || nom.contains(QRegExp("[0-9]"))) {
+         QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+             QObject::tr("Veuillez saisir un nom valide !"), QMessageBox::Cancel);
+         return;
+     }
+     // Vérification de la validité du mail
+     //QRegularExpression regex("\\b[a-z0-9._%+-]+@esprit\\.tn\\b");
+ QRegularExpression regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+     if (!regex.match(mail).hasMatch()) {
+         QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+             QObject::tr("Veuillez saisir une adresse mail valide !"), QMessageBox::Cancel);
+         return;
+     }
+     // Vérification que l'âge est supérieur ou égal à 18 ans
+     if (age < 18) {
+         QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+             QObject::tr("L'âge doit être supérieur ou égal à 18 ans."), QMessageBox::Cancel);
+         return;
+     }
+     // Vérification que le mot de passe contient au moins 8 caractères, une lettre minuscule, une lettre majuscule, un chiffre et un caractère spécial
+     QRegularExpression passwordRegex("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
+     if (!passwordRegex.match(mdp).hasMatch()) {
+           ui->lineEdit_MESSAGE->setText("");
+         QMessageBox::critical(nullptr, QObject::tr("Erreur"),
+           QObject::tr("Le mot de passe doit contenir au moins 8 caractères, une lettre minuscule, une lettre majuscule, un chiffre et un caractère spécial."), QMessageBox::Ok);
+     return;
+     }
+
+    Employe E(cin, nom, prenom, mail, age, role, mdp);
+    bool test = E.modifier();
+
+    if (test) {
+        ui->tableView->setModel(Etmp.afficher());
+        QMessageBox::information(nullptr, QObject::tr("succès !"),
+                    QObject::tr("modifié avec succès.\n"
+                                "Click Ok to exit."), QMessageBox::Ok);
+
+    }
+
+    else {
+        QMessageBox::critical(nullptr, QObject::tr("echec !"),
+                    QObject::tr("la modification a échoué.\n"
+                                "Click Cancel to exit."), QMessageBox::Cancel);
+    }
+
+}
+
+void MainWindow::on_pushButton_annuler_clicked()
+{
+    QMessageBox::StandardButton confirmation = QMessageBox::question(this, "Confirmation d'annulation", "Êtes-vous sûr(e) de vouloir annuler les modifications ?");
+
+    if (confirmation == QMessageBox::Yes) {
+        ui->lineEdit_ID->setText("");
+        ui->lineEdit_NOM->setText("");
+        ui->lineEdit_PRENOM->setText("");
+        ui->lineEdit_MAIL->setText("");
+        ui->lineEdit_AGE->setText("");
+        ui->comboBox->setCurrentText("");
+        ui->lineEdit_MDP->setText("");
+        ui->lineEdit_MDP_C->setText("");
+        ui->lineEdit_MESSAGE->setText("");
+    }
+}
+void MainWindow::on_pushButton_chercherE_clicked()
+{
+    QString clef = ui->lineEdit_chercherE->text().trimmed();
+
+    if (clef.isEmpty()) {
+        QMessageBox::warning(this, "Recherche invalide", "Veuillez entrer une clé de recherche valide.");
+        return;
+    }
+
+    // Création d'un modèle de chaînes de caractères pour le completer
+    QStringListModel* completerModel = new QStringListModel(this);
+
+    // Remplissage du modèle avec les données de la base de données
+    completerModel->setStringList(Etmp.getListeCles());
+
+    // Création et configuration du completer
+    QCompleter* completer = new QCompleter(completerModel, this);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    completer->setCompletionMode(QCompleter::PopupCompletion);
+    completer->setWrapAround(false);
+
+    // Attribution du completer au champ de recherche
+    ui->lineEdit_chercherE->setCompleter(completer);
+
+    QSqlQueryModel* model = Etmp.rechercher(clef);
+
+    if (!model->rowCount()) {
+        QMessageBox::information(this, "Résultat de la recherche", "Aucun résultat trouvé pour la clé de recherche spécifiée.");
+        return;
+    }
+
+    ui->tableView->setModel(model);
+}
+void MainWindow::on_pushButton_triA_clicked()
+{
+     ui->tableView->setModel(Etmp.Trier("CINE"));
+}
+void MainWindow::on_pushButton_triD_clicked()
+{
+    ui->tableView->setModel(Etmp.Trier("nom"));
+}
+void MainWindow::on_pushButton_profile_clicked()
+{
+
+        // Récupère les données de l'utilisateur connecté à partir de la base de données
+        QSqlQuery query;
+       // int status =Etmp.getEtatConnexion(Etmp.getCINE());
+        query.prepare("SELECT * FROM employes WHERE etat=:etat");
+        query.bindValue(":etat", 1);
+        query.exec();
+
+        if (query.next()) {
+            // Si une ligne est retournée, cela signifie que l'utilisateur existe dans la base de données
+            QString nom = query.value("nom").toString();
+            QString prenom = query.value("prenom").toString();
+            QString email = query.value("email").toString();
+            //int age = query.value("age").toInt();
+            QString role = query.value("role").toString();
+
+            // Crée la boîte de dialogue de profil
+            Profil *dialog = new Profil(this);
+
+            // Affiche les données récupérées dans la boîte de dialogue
+            ui->lineEdit_user->setText(nom);
+            dialog->setStatusLabelText(nom);
+
+
+            dialog->setStatusLabelText("Vous êtes connecté !");
+            dialog->exec();
+        } else {
+            QMessageBox::warning(this, "Erreur de connexion", "Vous n'êtes pas connecté in!");
+        }
+
+}
+void MainWindow::on_pushButton_logout_clicked()
+{
+
+    close();
+
+       // Crée une nouvelle instance de l'interface que vous voulez ouvrir
+       Formulaire *nouvelleInterface = new Formulaire();
+
+       // Affiche la nouvelle interface
+       nouvelleInterface->show();
+}
+void MainWindow::on_pushButton_capture_st_clicked()
+{
+    QPixmap pixmap(ui->customPlot->size());
+    ui->customPlot->render(&pixmap, QPoint(), QRegion());
+
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"), "", tr("PNG (*.png)"));
+    if (!fileName.isEmpty())
+    {
+        pixmap.save(fileName);
+    }
+}
+
+void MainWindow::on_pushButton_PDF_clicked()
+{
+    QString strStream;
+        QTextStream out(&strStream);
+
+        const int rowCount = ui->tableView->model()->rowCount();
+        const int columnCount = ui->tableView->model()->columnCount();
+
+        out << "<html>\n"
+            "<head>\n"
+            "<meta Content=\"Text/html; charset=Windows-1251\">\n"
+            "<title>Liste Des Employes</title>\n"
+            "</head>\n"
+            "<body bgcolor=#ffffff link=#5000A0>\n"
+            "<center><H1>Liste Des Employes</H1></center>\n"
+            "<table border=1 cellspacing=0 cellpadding=2>\n";
+
+        // headers
+        out << "<thead><tr bgcolor=#f0f0f0><th>Numero</th>";
+        for (int column = 0; column < columnCount; column++)
+        {
+            if (!ui->tableView->isColumnHidden(column))
+            {
+                QString header = ui->tableView->model()->headerData(column, Qt::Horizontal).toString();
+                out << QString("<th>%1</th>").arg(header);
+            }
+        }
+        out << "</tr></thead>\n";
+
+        // data table
+        for (int row = 0; row < rowCount; row++)
+        {
+            out << "<tr><td bkcolor=0>" << row + 1 << "</td>";
+            for (int column = 0; column < columnCount; column++)
+            {
+                if (!ui->tableView->isColumnHidden(column))
+                {
+                    QString data = ui->tableView->model()->data(ui->tableView->model()->index(row, column)).toString().simplified();
+                    out << QString("<td bkcolor=0>%1</td>").arg(data.isEmpty() ? "&nbsp;" : data);
+                }
+            }
+            out << "</tr>\n";
+        }
+        out << "</table>\n"
+            "</body>\n"
+            "</html>\n";
+
+        QString fileName = QFileDialog::getSaveFileName(this, tr("Sauvegarder en PDF"), QString(), tr("PDF files (*.pdf)"));
+        if (!fileName.isEmpty())
+        {
+            if (QFileInfo(fileName).suffix().isEmpty())
+            {
+                fileName.append(".pdf");
+            }
+
+            QPrinter printer(QPrinter::PrinterResolution);
+            printer.setOutputFormat(QPrinter::PdfFormat);
+            printer.setPaperSize(QPrinter::A4);
+            printer.setOutputFileName(fileName);
+
+            QTextDocument doc;
+            doc.setHtml(strStream);
+            doc.setPageSize(printer.pageRect().size());
+            doc.print(&printer);
+        }
+}
+
+//LES BOUTONS MENU
+void MainWindow::on_pushButton_employe_clicked()
+{
+    ui->stackedWidget_menu->setCurrentIndex(0);
+    checked=true;
+
+        ui->pushButton_home->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+         ui->pushButton_service->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+         ui->pushButton_station->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+         ui->pushButton_client->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+         ui->pushButton_chargeur->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+        ui->pushButton_employe->setStyleSheet("background-color:  rgb(8, 103, 94);color: #fff;border-top-left-radius: 20px;");
+
+}
+void MainWindow::on_pushButton_home_clicked()
+{
+
+    ui->stackedWidget_menu->setCurrentIndex(2);
+    ui->pushButton_employe->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+     ui->pushButton_service->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+     ui->pushButton_station->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+     ui->pushButton_client->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+     ui->pushButton_chargeur->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+    ui->pushButton_home->setStyleSheet("background-color:  rgb(8, 103, 94);color: #fff;border-top-left-radius: 20px;");
+
+
+}
+void MainWindow::on_pushButton_service_clicked()
+{
+        ui->stackedWidget_menu->setCurrentIndex(1);
+        ui->pushButton_home->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+        ui->pushButton_employe->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+        ui->pushButton_station->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+        ui->pushButton_client->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+        ui->pushButton_chargeur->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+        ui->pushButton_service->setStyleSheet("background-color:  rgb(8, 103, 94);color: #fff;border-top-left-radius: 20px;");
+
+       // ui->pushButton_service->setStyleSheet("background-color:  rgb(8, 103, 94);color: #fff;border-top-left-radius: 20px;");
+}
+
+void MainWindow::on_pushButton_station_clicked()
+{
+     ui->stackedWidget_menu->setCurrentIndex(4);
+     ui->pushButton_home->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+     ui->pushButton_employe->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+     ui->pushButton_service->setStyleSheet("background-color: #fff;border-top-left-radius: 20px;");
+     ui->pushButton_station->setStyleSheet("background-color:  rgb(8, 103, 94);color: #fff;border-top-left-radius: 20px;");
+
+    // ui->pushButton_service->setStyleSheet("background-color:  rgb(8, 103, 94);color: #fff;border-top-left-radius: 20px;");
+}
+
+void MainWindow::on_pushButton_menu_gerer_clicked()
+{
+    ui->tabWidget->setCurrentIndex(1);
+}
+
+void MainWindow::on_pushButton_menu_consulter_clicked()
+{
+     ui->tabWidget_station->setCurrentIndex(2);
+}
+
+void MainWindow::on_pushButton_menu_stat_clicked()
+{
+     ui->tabWidget_station->setCurrentIndex(3);
+}
+
+void MainWindow::on_pushButton_retour_clicked()
+{
+    ui->tabWidget_station->setCurrentIndex(0);
+}
+ QString cheminAbsolu;
+QString MainWindow::on_pb_image_clicked()
+{
+
+    QString filename = QFileDialog::getOpenFileName(this, tr("Choose Image"),"",tr("Images (*.png *.jpg *.jpeg *.bmp *.gif)"));
+    if (!filename.isEmpty())
+    {
+        QImage image(filename);
+        if (image.isNull())
+        {
+            QMessageBox::critical(nullptr, tr("Error"), tr("Failed to load image."));
+            return QString();
+        }
+
+        QPixmap pixmap = QPixmap::fromImage(image);
+        if (pixmap.isNull())
+        {
+            QMessageBox::critical(nullptr, tr("Error"), tr("Failed to convert image to pixmap."));
+            return QString();
+        }
+
+        ui->tb_image->setPixmap(pixmap);
+        ui->label_image->setText(filename);
+
+        QMessageBox::information(nullptr, tr("Image Importée"), tr("Imporation avec succès."));
+        QFileInfo fileinfo(filename);
+        cheminAbsolu = fileinfo.filePath();
+    }
+
+    return cheminAbsolu;
+}
+
+void MainWindow::on_pb_ajouter_clicked()
+{
+    // Vérifier si tous les champs sont remplis
+    if (ui->le_code->text().isEmpty() || ui->le_prix->text().isEmpty() || ui->le_type->text().isEmpty() || ui->le_cin->text().isEmpty() || cheminAbsolu.isEmpty()) {
+        QMessageBox::warning(this, tr("Champs manquants"), tr("Veuillez remplir tous les champs avant d'ajouter une offre et importer une image."));
+        return;
+    }
+
+    // Convertir les valeurs des champs en types appropriés
+    int code = ui->le_code->text().toInt();
+    int prix = ui->le_prix->text().toInt();
+    QString type = ui->le_type->text();
+    int cin_e = ui->le_cin->text().toInt();
+    QString photos = cheminAbsolu;
+
+    // Vérifier l'existence de l'employé
+    if (!Etmp.rechercherEmploye(cin_e)) {
+        QMessageBox::critical(nullptr, QObject::tr("Ajout d'un offre"),
+            QObject::tr("L'employé avec le CIN %1 n'existe pas!\n"
+                        "Veuillez vérifier l'ID de l'employé et réessayer.").arg(cin_e),
+            QMessageBox::Cancel);
+        return;
+    }
+
+    // Ajouter l'offre
+    offre o(code, prix, type, cin_e, photos);
+    bool test = o.ajouter();
+    if (test) {
+        QMessageBox::information(nullptr, QObject::tr("Ajout d'un offre"),
+            QObject::tr("Ajout effectué\nClick cancel to exit."), QMessageBox::Cancel);
+        ui->tab_offre->setModel(o.afficher()); // Rafraîchir la vue des offres
+        ui->le_code->clear();
+        ui->le_prix->clear();
+        ui->le_type->clear();
+        ui->le_cin->clear();
+        ui->tb_image->clear();
+        ui->label_image->clear();
+        cheminAbsolu.clear();
+    }
+    else {
+        QMessageBox::critical(nullptr, QObject::tr("Ajout d'un offre"),
+            QObject::tr("Ajout non effectué\nClick cancel to exit."), QMessageBox::Cancel);
+    }
+}
+
+void MainWindow::on_pb_modifier_clicked()
+{
+    int code=ui->le_code->text().toInt();
+    int prix=ui->le_prix->text().toInt();
+    QString type=ui->le_type->text();
+    int cin_e=ui->le_cin->text().toInt();
+QString photos=cheminAbsolu;
+        offre o(code,prix,type,cin_e,photos);
+
+
+         bool test=o.modifier(o.getcode());
+         if(test)
+       {
+             ui->tab_offre->setModel( o.afficher());//refresh
+
+       QMessageBox::information(nullptr, QObject::tr("Modifier un offre"),
+                         QObject::tr("client modifiée.\n"
+                                     "Click Cancel to exit."), QMessageBox::Cancel);
+
+       }
+         else{
+             QMessageBox::critical(nullptr, QObject::tr("Modifier un offre"),
+                         QObject::tr("Erreur !.\n"
+                                     "Click Cancel to exit."), QMessageBox::Cancel);}
+
+         ui->le_code->clear();
+         ui->le_prix->clear();
+         ui->le_type->clear();
+         ui->le_cin->clear();
+}
+void MainWindow::on_on_pushButton_pdf_clicked()
+{
+    QString strStream;
+    QTextStream out(&strStream);
+
+    const int rowCount = ui->tab_offre->model()->rowCount();
+    const int columnCount = ui->tab_offre->model()->columnCount();
+
+    out << "<html>\n"
+        "<head>\n"
+        "<meta Content=\"Text/html; charset=Windows-1251\">\n"
+        "<title>Liste Des Chercheurs</title>\n"
+        "</head>\n"
+        "<body bgcolor=#ffffff link=#5000A0>\n"
+        "<center><H1>Liste Des Chercheurs</H1></center>\n"
+        "<table border=1 cellspacing=0 cellpadding=2>\n";
+
+    // headers
+    out << "<thead><tr bgcolor=#f0f0f0><th>Numero</th>";
+    for (int column = 0; column < columnCount; column++)
+    {
+        if (!ui->tab_offre->isColumnHidden(column))
+        {
+            QString header = ui->tab_offre->model()->headerData(column, Qt::Horizontal).toString();
+            out << QString("<th>%1</th>").arg(header);
+        }
+    }
+    out << "</tr></thead>\n";
+
+    // data table
+    for (int row = 0; row < rowCount; row++)
+    {
+        out << "<tr><td bkcolor=0>" << row + 1 << "</td>";
+        for (int column = 0; column < columnCount; column++)
+        {
+            if (!ui->tab_offre->isColumnHidden(column))
+            {
+                QString data = ui->tab_offre->model()->data(ui->tab_offre->model()->index(row, column)).toString().simplified();
+                out << QString("<td bkcolor=0>%1</td>").arg(data.isEmpty() ? "&nbsp;" : data);
+            }
+        }
+        out << "</tr>\n";
+    }
+    out << "</table>\n"
+        "</body>\n"
+        "</html>\n";
+
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Sauvegarder en PDF"), QString(), tr("PDF files (*.pdf)"));
+    if (!fileName.isEmpty())
+    {
+        if (QFileInfo(fileName).suffix().isEmpty())
+        {
+            fileName.append(".pdf");
+        }
+
+        QPrinter printer(QPrinter::PrinterResolution);
+        printer.setOutputFormat(QPrinter::PdfFormat);
+        printer.setPaperSize(QPrinter::A4);
+        printer.setOutputFileName(fileName);
+
+        QTextDocument doc;
+        doc.setHtml(strStream);
+        doc.setPageSize(printer.pageRect().size());
+        doc.print(&printer);
+    }
+
+}
+
+void MainWindow::on_pb_supprimer_clicked()
+{
+    offre o1; o1.setcode(ui->le_code_supp->text().toInt());
+
+    bool test=o1.supprimer(o1.getcode());
+    if (test){
+
+    QMessageBox::information(nullptr, QObject::tr("Supprimer un offre"),
+                           QObject::tr("Supprimer effectué\n"
+                                       "Click cancel to exit."), QMessageBox::Cancel );
+    ui->tab_offre->setModel(o.afficher());//refreche
+    }
+    else{
+        QMessageBox::critical(nullptr, QObject::tr("Supprimer un offre"),
+                               QObject::tr("Supprimer non effectué\n"
+                                           "Click cancel to exit."), QMessageBox::Cancel );}
+    ui->le_code_supp->clear();
+
+
+
+}
+
+void MainWindow::on_pb_chercher_code_clicked()
+{
+    QSqlQueryModel *model = new QSqlQueryModel();
+        QString codee;
+
+                    offre o;
+        codee =o.getcode();
+
+            codee= ui->le_code_ch->text();
+
+            model->setQuery("Select * from services "
+                            "where code='"+codee+"' ");
+               model->setHeaderData(0, Qt::Horizontal, QObject::tr("code"));
+               model->setHeaderData(1, Qt::Horizontal, QObject::tr("prix"));
+               model->setHeaderData(2, Qt::Horizontal, QObject::tr("type"));
+               model->setHeaderData(3, Qt::Horizontal, QObject::tr("cin_e"));
+
+
+               bool test=o.chercher_code();
+               if(test)
+             {
+             QMessageBox::information(nullptr, QObject::tr("Chercher un offre"),
+                               QObject::tr("affichage offre .\n"
+                                           "Click Cancel to exit."), QMessageBox::Cancel);
+             ui->tableView_resultat_recherche->setModel(model);
+             ui->tableView_resultat_recherche->show();
+
+
+        }
+               else{
+                   QMessageBox::information(nullptr, QObject::tr("Chercher un offre"),
+                               QObject::tr("Erreur .\n"
+                                           "Click Cancel to exit."), QMessageBox::Cancel);
+               }
+
+
+}
+void MainWindow::on_pb_chercher_prix_clicked()
+{
+    QSqlQueryModel *model = new QSqlQueryModel();
+       QString prixx;
+
+                   offre o;
+       prixx =o.getprix();
+
+           prixx= ui->le_prix_ch->text();
+
+           model->setQuery("Select * from services "
+                           "where prix='"+prixx+"' ");
+              model->setHeaderData(0, Qt::Horizontal, QObject::tr("code"));
+              model->setHeaderData(1, Qt::Horizontal, QObject::tr("prix"));
+              model->setHeaderData(2, Qt::Horizontal, QObject::tr("type"));
+              model->setHeaderData(3, Qt::Horizontal, QObject::tr("cin_e"));
+
+
+              bool test=o.chercher_prix();
+              if(test)
+            {
+            QMessageBox::information(nullptr, QObject::tr("Chercher un offre"),
+                              QObject::tr("affichage offre .\n"
+                                          "Click Cancel to exit."), QMessageBox::Cancel);
+            ui->tableView_resultat_recherche->setModel(model);
+            ui->tableView_resultat_recherche->show();
+
+
+       }
+              else{
+                  QMessageBox::information(nullptr, QObject::tr("Chercher un offre"),
+                              QObject::tr("Erreur .\n"
+                                          "Click Cancel to exit."), QMessageBox::Cancel);
+              }
+
+}
+
+void MainWindow::on_pb_chercher_type_clicked()
+{
+    QSqlQueryModel *model = new QSqlQueryModel();
+       QString typee;
+
+                   offre o;
+       typee =o.gettype();
+
+           typee= ui->le_type_ch->text();
+
+           model->setQuery("Select * from services "
+                           "where type='"+typee+"' ");
+              model->setHeaderData(0, Qt::Horizontal, QObject::tr("code"));
+              model->setHeaderData(1, Qt::Horizontal, QObject::tr("prix"));
+              model->setHeaderData(2, Qt::Horizontal, QObject::tr("type"));
+              model->setHeaderData(3, Qt::Horizontal, QObject::tr("cin_e"));
+
+
+              bool test=o.chercher_type();
+              if(test)
+            {
+            QMessageBox::information(nullptr, QObject::tr("Chercher un offre"),
+                              QObject::tr("affichage offre .\n"
+                                          "Click Cancel to exit."), QMessageBox::Cancel);
+            ui->tableView_resultat_recherche->setModel(model);
+            ui->tableView_resultat_recherche->show();
+
+
+       }
+              else{
+                  QMessageBox::information(nullptr, QObject::tr("Chercher un offre"),
+                              QObject::tr("Erreur .\n"
+                                          "Click Cancel to exit."), QMessageBox::Cancel);
+              }
+
+}
+
+void MainWindow::on_pb_camera_clicked()
+{
+
+    camera =new Camera(this);
+    camera->show();
+}
+
+void MainWindow::on_pb_stat_clicked()
+{
+    statistique=new Statistique(this);
+    statistique->show();
+}
+
+void MainWindow::on_pushButton_retour_2_clicked()
+{
+     ui->tabWidget_service->setCurrentIndex(0);
+}
+
+void MainWindow::on_pushButton_retour_3_clicked()
+{
+     ui->tabWidget_service->setCurrentIndex(0);
+}
+
+void MainWindow::on_pb_trier_prix_clicked()
+{
+    QMessageBox msgBox ;
+
+
+
+                      bool test=o.triprix();
+                      if(test){
+    ui->tableView_resultat_recherche->setModel(o.triprix());
+
+                    QMessageBox::information(nullptr, QObject::tr("trier les  offres par prix"),
+                                      QObject::tr("tri  effectué .\n"
+                                                  "Click Cancel to exit."), QMessageBox::Cancel);
+
+
+
+                  }  else
+                        QMessageBox::critical(nullptr, QObject::tr("trier les  offres par prix"),
+                 QObject::tr("tri non effectué\n"
+                                                          "Click cancel to exit."), QMessageBox::Cancel );
+
+}
+
+void MainWindow::on_pb_trier_code_clicked()
+{
+    QMessageBox msgBox ;
+
+
+
+                      bool test=o.tricode();
+                      if(test){
+
+
+                    QMessageBox::information(nullptr, QObject::tr("trier les  offres par code"),
+                                      QObject::tr("tri  effectué .\n"
+                                                  "Click Cancel to exit."), QMessageBox::Cancel);
+
+                     ui->tableView_resultat_recherche->setModel(o.tricode());
+
+                  }  else
+                        QMessageBox::critical(nullptr, QObject::tr("trier les  offres par code"),
+                 QObject::tr("tri non effectué\n"
+                                                          "Click cancel to exit."), QMessageBox::Cancel );
+}
+
+void MainWindow::on_pb_trier_type_clicked()
+{
+    QMessageBox msgBox ;
+
+
+
+                      bool test=o.tritype();
+                      if(test){
+    ui->tableView_resultat_recherche->setModel(o.tritype());
+
+                    QMessageBox::information(nullptr, QObject::tr("trier les  offres par type"),
+                                      QObject::tr("tri  effectué .\n"
+                                                  "Click Cancel to exit."), QMessageBox::Cancel);
+
+
+
+                  }  else
+                        QMessageBox::critical(nullptr, QObject::tr("trier les  offres par type"),
+                 QObject::tr("tri non effectué\n"
+                                                          "Click cancel to exit."), QMessageBox::Cancel );
+}
+
+void MainWindow::on_pb_video_clicked()
+{
+    Video=new video(this);
+    Video->show();
+}

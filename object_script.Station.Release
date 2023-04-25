@@ -1,0 +1,14 @@
+INPUT(
+./release\connection.o
+./release\employe.o
+./release\formulaire.o
+./release\main.o
+./release\mainwindow.o
+./release\profil.o
+./release\qcustomplot.o
+./release\qrc_media.o
+./release\moc_formulaire.o
+./release\moc_mainwindow.o
+./release\moc_profil.o
+./release\moc_qcustomplot.o
+);

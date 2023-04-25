@@ -1,0 +1,17 @@
+.menuButton {
+    background-color: white;
+    color: #444;
+}
+
+QMenuBar::item {
+    padding: 4px;
+}
+
+QMenuBar::item:selected {
+    background-color: #ddd;
+}
+
+QMenuBar::item:hover {
+    background-color: #555;
+    color: white;
+}
